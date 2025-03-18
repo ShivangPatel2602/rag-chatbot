@@ -16,7 +16,7 @@ body {
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
 }
 
-.chat-box {
+#chat-box {
     height: 300px;
     overflow-y: auto;
     border-bottom: 2px solid #ddd;
