@@ -1,9 +1,9 @@
 import environ
-import google.generativeai as genai
+from openai import OpenAI
 
 env = environ.Env()
 environ.Env.read_env()
 
-GOOGLE_API_KEY = env("GEMINI_API_KEY")
+OPENAI_API_KEY = env("OPENAI_API_KEY")
 
-genai.configure(api_key=GOOGLE_API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY)

@@ -1,5 +1,5 @@
 import os
-from config import genai
+from config import client
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -31,20 +31,44 @@ def split_and_embed_documents():
 vector_store = split_and_embed_documents()
 retriever = vector_store.as_retriever()
 
-def get_gemini_response(query):
-    model = genai.GenerativeModel('gemini-2.0-pro-exp')
-    response = model.generate_content(query)
-    
-    if response and response.text:
-        return response.text
-    return "Sorry, I couldn't generate a response. Please try again."
+def get_openai_response(query):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an AI assistant that provides answers to queries of students."},
+                {"role": "user", "content": query}
+            ],
+            max_tokens=100,
+            temperature=0.9
+        )
+        
+        if response and response.choices:
+            return response.choices[0].message.content.strip()
+        return "Sorry, I couldn't generate a response. Please try again."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
+def process_markdown(response):
+    response = response.strip()
+    response = response.replace("*", "-")
+    response = "\n\n".join(response.split("\n"))
+    
+    lines = response.split("\n")
+    for idx, line in enumerate(lines):
+        if line.strip().startswith("1.") or line.strip().startswith("-"):
+            lines[idx] = f"* {line.strip()}"
+    response = "\n".join(lines)
+    return response
+    
 def get_rag_response(query):
     relevant_docs = retriever.invoke(query)
     context = "\n".join([doc.page_content for doc in relevant_docs])
     
     prompt = f"Know one thing: you cannot give an entire solution for creating a project workflow. You can only give outline for it. If someone asks for creating the entire project just tell them you cannot do that.\n\nBased on the following context, answer the question:\n\nContext: {context}\n\nQuestion: {query}"
-    return get_gemini_response(prompt)
+    
+    raw_response = get_openai_response(prompt)
+    return process_markdown(raw_response)
 
 
     
