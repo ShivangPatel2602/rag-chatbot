@@ -39,7 +39,7 @@ def get_openai_response(query):
                 {"role": "system", "content": "You are an AI assistant that provides answers to queries of students."},
                 {"role": "user", "content": query}
             ],
-            max_tokens=100,
+            max_tokens=500,
             temperature=0.9
         )
         
@@ -49,26 +49,14 @@ def get_openai_response(query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def process_markdown(response):
-    response = response.strip()
-    response = response.replace("*", "-")
-    response = "\n\n".join(response.split("\n"))
-    
-    lines = response.split("\n")
-    for idx, line in enumerate(lines):
-        if line.strip().startswith("1.") or line.strip().startswith("-"):
-            lines[idx] = f"* {line.strip()}"
-    response = "\n".join(lines)
-    return response
-    
 def get_rag_response(query):
     relevant_docs = retriever.invoke(query)
     context = "\n".join([doc.page_content for doc in relevant_docs])
     
-    prompt = f"Know one thing: you cannot give an entire solution for creating a project workflow. You can only give outline for it. If someone asks for creating the entire project just tell them you cannot do that.\n\nBased on the following context, answer the question:\n\nContext: {context}\n\nQuestion: {query}"
+    prompt = f"You are a project manager who has commendable technical expertise. You are helping a student to create a project workflow. You can only give outline for it and not the entire solution. If someone asks for creating the entire project just tell them you cannot do that. Your response should be more like a human response and not something generated from a bot. You should stick to the solution provided to you and nothing else. Your response should be precise and easy to understand.\n\nBased on the following context, answer the question:\n\nContext: {context}\n\nQuestion: {query}"
     
     raw_response = get_openai_response(prompt)
-    return process_markdown(raw_response)
+    return raw_response
 
 
     

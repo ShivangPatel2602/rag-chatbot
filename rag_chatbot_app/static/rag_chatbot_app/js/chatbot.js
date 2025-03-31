@@ -15,7 +15,8 @@ function sendMessage() {
     })
     .then(response => response.json())
     .then(data => {
-        chatBox.innerHTML += '<p><strong>Bot:</strong> ' + data.response + '</p>';
+        var formattedRes = marked.parse(data.response);
+        chatBox.innerHTML += '<p><strong>Bot:</strong> ' + formattedRes + '</p>';
     })
     .catch(error => {
         chatBox.innerHTML += '<p><strong>Bot:</strong> Error processing your request.</p>';
