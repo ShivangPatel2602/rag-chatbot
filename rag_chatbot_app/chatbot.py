@@ -3,16 +3,16 @@ import sqlite3
 import pickle
 from numpy import dot
 from numpy.linalg import norm
-from config import client
+from config import client, OPENAI_API_KEY
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings 
+from langchain_openai import OpenAIEmbeddings 
 from langchain_community.vectorstores import FAISS
 
 DOCS_PATH = os.path.join(os.path.dirname(__file__), "docs")
 DB_PATH = "query_memory.db"
 
-embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", api_key=OPENAI_API_KEY)
 
 def cosine_similarity(a, b):
     return dot(a, b) / (norm(a) * norm(b))
