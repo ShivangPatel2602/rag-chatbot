@@ -10,7 +10,6 @@
     <script>
       var csrfToken = "{{ csrf_token }}";
     </script>
-    <script src="{% static 'rag_chatbot_app/js/chatbot.js' %}"></script>
   </head>
   <body>
     <div class="chat-container">
@@ -21,7 +20,14 @@
         <div class="input-box">
             <input type="text" id="user-input" placeholder="Type a message">
             <button onclick="sendMessage()">Send</button>
+            <button class="voice-button" onclick="startVoiceInput()" title="Speak your query">
+              <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="#fff">
+                <path d="M12 14q-.825 0-1.413-.588Q10 12.825 10 12V6q0-.825.587-1.412Q11.175 4 12 4t1.413.588Q14 5.175 14 6v6q0 .825-.587 1.412Q12.825 14 12 14Zm-1 7v-3.075q-2.875-.35-4.438-2.275Q5 13.725 5 11h2q0 2.075 1.463 3.538Q9.925 16 12 16t3.537-1.462Q17 13.075 17 11h2q0 2.725-1.563 4.65-1.562 1.925-4.437 2.275V21Z"/>
+              </svg>
+            </button>
         </div>
     </div>
+
+    <script src="{% static 'rag_chatbot_app/js/chatbot.js' %}"></script>
   </body>
 </html>

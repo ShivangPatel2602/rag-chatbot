@@ -45,3 +45,35 @@ body {
     margin-left: 5px;
     cursor: pointer;
 }
+
+.voice-button {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.voice-button:active {
+    color: red;
+}
+
+.voice-button.listening svg {
+    animation: mic-pulse 1s infinite ease-in-out;
+    fill: #ff5252;
+}
+
+@keyframes mic-pulse {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 5px #ff5252);
+    }
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 10px #ff5252);
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 5px #ff5252);
+    }
+}
