@@ -5,7 +5,6 @@ langchain_community
 langchain_openai
 numpy
 openai
-os
 pickle
 SpeechRecognition
 sqlite3
