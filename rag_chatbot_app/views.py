@@ -1,7 +1,8 @@
+import json
 from django.shortcuts import render
 from django.http import JsonResponse
 from .chatbot import get_rag_response
-import json
+import speech_recognition as sr
 
 def get_chatbot_response(user_input):
     user_input = user_input.lower()
@@ -26,3 +27,19 @@ def ask_chatbot(request):
         chatbot_response = get_chatbot_response(user_msg)
         return JsonResponse({"response": chatbot_response})
     return JsonResponse({"response": "Invalid request!"})
+
+def transcribe_audio(request):
+    print("entered transcribe audio")
+    if request.method == 'POST' and request.FILES.get('audio'):
+        audio_file = request.FILES['audio']
+        print("Audio file received", audio_file)
+        try:
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(audio_file) as source:
+                audio_data = recognizer.record(source)
+                transcription = recognizer.recognize_google(audio_data)
+                print("Transcription", transcription)
+                return JsonResponse({"transcription": transcription})
+        except Exception as e:
+            return JsonResponse({"transcription": '', "error": str(e)})
+    return JsonResponse({"transcription": '', "error": "Invalid request!"})

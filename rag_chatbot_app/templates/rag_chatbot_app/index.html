@@ -7,6 +7,7 @@
     <title>RAG ChatBot</title>
     <link rel="stylesheet" href="{% static 'rag_chatbot_app/css/styles.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recorderjs/0.1.0/recorder.min.js"></script>
     <script>
       var csrfToken = "{{ csrf_token }}";
     </script>
@@ -28,6 +29,13 @@
         </div>
     </div>
 
+    <div id="recording-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <p>Listening... Speak now</p>
+        <button onclick="stopVoiceInput()">Stop Recording</button>
+      </div>
+    </div>
+    
     <script src="{% static 'rag_chatbot_app/js/chatbot.js' %}"></script>
   </body>
 </html>
