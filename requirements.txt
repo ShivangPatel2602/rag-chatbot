@@ -1,5 +1,5 @@
 django
-environ
+django-environ
 gunicorn
 langchain
 langchain_community
