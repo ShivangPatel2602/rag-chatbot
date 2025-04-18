@@ -1,5 +1,6 @@
 django
 django-environ
+faiss-cpu
 gunicorn
 langchain
 langchain_community
