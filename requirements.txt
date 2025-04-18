@@ -6,5 +6,6 @@ langchain_community
 langchain_openai
 numpy
 openai
+pypdf
 SpeechRecognition
 whitenoise
