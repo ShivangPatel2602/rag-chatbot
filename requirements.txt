@@ -5,8 +5,10 @@ gunicorn
 langchain
 langchain_community
 langchain_openai
+nltk
 numpy
 openai
 pypdf
 SpeechRecognition
+textblob
 whitenoise

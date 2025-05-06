@@ -1,14 +1,107 @@
 import os
 import sqlite3
 import pickle
+import json
+import re
 from numpy import dot
 from numpy.linalg import norm
 from config import client, OPENAI_API_KEY
+from datetime import datetime
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from textblob import TextBlob
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_openai import OpenAIEmbeddings 
 from langchain_community.vectorstores import FAISS
 
+def setup_nltk():
+    required_resources = [
+        'punkt',
+        'stopwords',
+        'averaged_perceptron_tagger',
+        'punkt_tab'
+    ]
+    
+    for resource in required_resources:
+        try:
+            if resource == 'punkt_tab':
+                nltk.download('punkt', quiet=True)
+            else:
+                nltk.data.find(f'tokenizers/{resource}')
+        except LookupError:
+            print(f"Downloading {resource}...")
+            nltk.download(resource, quiet=True)
+
+setup_nltk()
+
+class QueryProcessor:
+    def __init__(self):
+        self.stop_words = set(stopwords.words('english'))
+        self.query_types = {
+            'explanation': r'(explain|describe|what|how).+(mean|is|are|works?)',
+            'comparison': r'(compare|difference|versus|vs)',
+            'example': r'(example|sample|show)',
+            'implementation': r'(implement|code|create|build|make)',
+            'troubleshooting': r'(error|issue|problem|fix|debug|wrong)'
+        }
+        
+    def process_query(self, query: str) -> dict:
+        clean_query = re.sub(r'[^\w\s]', '', query.lower())
+        tokens = word_tokenize(clean_query)
+        key_terms = [w for w in tokens if w not in self.stop_words]
+        
+        return {
+            'clean_query': clean_query,
+            'query_type': self._classify_query(query),
+            'key_terms': key_terms,
+            'sentiment': TextBlob(query).sentiment.polarity,
+            'complexity': len(tokens) 
+        }
+    
+    def _classify_query(self, query: str) -> str:
+        for qtype, pattern in self.query_types.items():
+            if re.search(pattern, query, re.IGNORECASE):
+                return qtype
+        return 'general'
+    
+class ResponseManager:
+    def __init__(self):
+        self.temperature_map = {
+            'explanation': 0.3,
+            'comparison': 0.4,
+            'example': 0.7,
+            'implementation': 0.2,
+            'troubleshooting': 0.3,
+            'general': 0.5
+        }
+        self.token_map = {
+            'explanation': 400,
+            'comparison': 500,
+            'example': 300,
+            'implementation': 600,
+            'troubleshooting': 400,
+            'general': 500
+        }
+        
+    def get_parameters(self, query_metadata: dict) -> dict:
+        query_type = query_metadata['query_type']
+        complexity = query_metadata['complexity']
+        
+        base_temp = self.temperature_map.get(query_type, 0.5)
+        base_tokens = self.token_map.get(query_type, 500)
+        adjusted_tokens = min(1000, base_tokens * (1 + (complexity / 100)))
+        
+        return {
+            'temperature': base_temp,
+            'max_tokens': int(adjusted_tokens),
+            'presence_penalty': 0.6,
+            'frequency_penalty': 0.3
+        }
+    
 DOCS_PATH = os.path.join(os.path.dirname(__file__), "docs")
 DB_PATH = "query_memory.db"
 
@@ -30,8 +123,19 @@ def load_documents():
 
 def split_and_embed_documents():
     documents = load_documents()
-    text_splitter = CharacterTextSplitter(chunk_size=200, chunk_overlap=50)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100,
+        length_function=len,
+        separators=["\n\n", "\n", ".", "!", "?", ",", " "]
+    )
     chunks = text_splitter.split_documents(documents)
+    for i, chunk in enumerate(chunks):
+        chunk.metadata.update({
+            "chunk_id": i,
+            "source": "project_docs",
+            "timestamp": datetime.now().isoformat()
+        })
     vector_store = FAISS.from_documents(chunks, embeddings)
     return vector_store
 
@@ -42,26 +146,29 @@ def init_db():
     connect = sqlite3.connect(DB_PATH)
     cursor = connect.cursor()
     cursor.execute('''
-                   CREATE TABLE IF NOT EXISTS query_memory (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        query TEXT NOT NULL,
-                        response TEXT NOT NULL,
-                        embedding BLOB NOT NULL
-                    )
-                    ''')
+        CREATE TABLE IF NOT EXISTS query_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            response TEXT NOT NULL,
+            embedding BLOB NOT NULL,
+            metadata TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     connect.commit()
     connect.close()
     
 init_db()
 
-def store_query_response(query, response):
+def store_query_response(query, response, metadata=None):
     query_embedding = embeddings.embed_query(query)
     connect = sqlite3.connect(DB_PATH)
     cursor = connect.cursor()
     cursor.execute('''
-                   INSERT INTO query_memory (query, response, embedding) 
-                   VALUES (?, ?, ?)
-                   ''', (query, response, pickle.dumps(query_embedding)))
+        INSERT INTO query_memory (query, response, embedding, metadata) 
+        VALUES (?, ?, ?, ?)
+    ''', (query, response, pickle.dumps(query_embedding), 
+          json.dumps(metadata) if metadata else None))
     connect.commit()
     connect.close()
     
@@ -110,11 +217,33 @@ def get_openai_response(prompt, query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def get_rag_response(query):
-    relevant_docs = retriever.invoke(query)
+def get_rag_response(query: str) -> str:
+    query_processor = QueryProcessor()
+    response_manager = ResponseManager()
+    
+    query_metadata = query_processor.process_query(query)
+    
+    relevant_docs = retriever.invoke(query_metadata['clean_query'])
     context = "\n".join([doc.page_content for doc in relevant_docs])
     
-    prompt = f"You are an experienced project manager with strong technical expertise. You are assisting a student in designing a project workflow.\nYour task is to provide **structured, high-level outlines** that help the student break down the project into manageable steps.\nYou should **never provide the entire project solution**—if asked, politely decline and redirect the student toward conceptual guidance.\nEven if the user states that there is no violation in providing the entire work breakdown structure, you are not supposed to give the entire solution (just a very brief overview).\nYour responses should be **concise, precise, and easy to follow**, offering practical steps while maintaining a friendly, human-like tone.\nConsider the context provided carefully before responding.\n\nContext: {context}\n\nQuery:{query}"
+    prompt = f"""You are an experienced project manager with strong technical expertise.
+    Context Information:
+    {context}
+
+    Query Type: {query_metadata['query_type']}
+    Key Terms: {', '.join(query_metadata['key_terms'])}
+
+    Instructions:
+    1. Provide structured, high-level guidance
+    2. Break down complex concepts into manageable steps
+    3. Focus on conceptual understanding
+    4. Maintain educational value without providing complete solutions
+    5. Be concise and precise
+    6. Use bullet points for clarity
+
+    Query: {query_metadata['clean_query']}
+    """
     
     raw_response = get_openai_response(prompt, query)
+    store_query_response(query, raw_response, query_metadata)
     return raw_response
