@@ -21,26 +21,6 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_openai import OpenAIEmbeddings 
 from langchain_community.vectorstores import FAISS
 
-def setup_nltk():
-    required_resources = [
-        'punkt',
-        'stopwords',
-        'averaged_perceptron_tagger',
-        'punkt_tab'
-    ]
-    
-    for resource in required_resources:
-        try:
-            if resource == 'punkt_tab':
-                nltk.download('punkt', quiet=True)
-            else:
-                nltk.data.find(f'tokenizers/{resource}')
-        except LookupError:
-            print(f"Downloading {resource}...")
-            nltk.download(resource, quiet=True)
-
-setup_nltk()
-
 class QueryProcessor:
     def __init__(self):
         self.stop_words = set(stopwords.words('english'))

@@ -54,3 +54,62 @@ To utilize the functionality of the chatbot, you'll need an OpenAI API key.
     import os
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     ```
+
+## Deployment on Render
+The project is deployed on the Render platform to make it accessible to all the users. Below are the steps followed for the deployment:
+
+1. Project Setup for Deployment
+
+    - Install Gunicorn
+    ```bash
+    pip install gunicorn
+    ```
+    - Create `requirements.txt`:
+    ```bash
+    pip freeze > requirements.txt
+    ```
+    - Create `Procfile`:
+    ```bash
+    web: gunicorn rag_chatbot.wsgi
+    ```
+    - Allowed Hosts in `settings.py`:
+    ```python
+    ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+    ```
+    - Collect static files
+        - In `settings.py`:
+        ```python
+        STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+        ```
+        - Then run:
+        ```bash
+        python manage.py collectstatic
+        ```
+
+2. Set Up on Render
+    - Go to https://render.com and sign in.
+    - Click on "New Web Service".
+    - Connect your GitHub repository.
+    -Fill in the form:
+        - Name: Your app name
+        - Build Command: `pip install -r requirements.txt`
+        - Start Command: `gunicorn rag_chatbot.wsgi`
+        - Runtime: Python
+    - Add Environment Variables.
+
+3. Static Files Handling
+    - Add to `settings.py`:
+    ```python
+    MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    ...
+    ]
+    ```
+    - Install:
+    ```bash
+    pip install whitenoise
+    ```
+
+4. Final Steps
+    - Commit and push all changes to GitHub.
+    - Render will auto-deploy the app when changes are pushed.
