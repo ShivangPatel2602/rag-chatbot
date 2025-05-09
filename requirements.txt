@@ -1,5 +1,6 @@
 django
 django-environ
+dnspython
 faiss-cpu
 gunicorn
 langchain
@@ -8,6 +9,7 @@ langchain_openai
 nltk
 numpy
 openai
+pymongo
 pypdf
 SpeechRecognition
 textblob

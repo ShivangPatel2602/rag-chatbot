@@ -8,6 +8,9 @@ from numpy.linalg import norm
 from config import client, OPENAI_API_KEY
 from datetime import datetime
 import nltk
+from pymongo import MongoClient
+from bson.binary import Binary
+from .mongodb_config import MONGODB_CONFIG, ENV
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from textblob import TextBlob
@@ -101,6 +104,56 @@ class ResponseManager:
             'presence_penalty': 0.6,
             'frequency_penalty': 0.3
         }
+        
+class DatabaseManager:
+    def __init__(self):
+        self.config = MONGODB_CONFIG[ENV]
+        if ENV == 'dev':
+            self.client = MongoClient(
+                host=self.config['host'],
+                port=self.config['port']
+            )
+        else:
+            self.client = MongoClient(self.config['uri'])
+            
+        self.db = self.client[self.config['db_name']]
+        self.collection = self.db[self.config['collection_name']]
+        
+        self.collection.create_index([('query', 'text')])
+        self.collection.create_index([('timestamp', -1)])
+
+    def store_query_response(self, query, response, metadata=None):
+        query_embedding = embeddings.embed_query(query)
+        document = {
+            'query': query,
+            'response': response,
+            'embedding': Binary(pickle.dumps(query_embedding)),
+            'metadata': metadata,
+            'timestamp': datetime.now()
+        }
+        self.collection.insert_one(document)
+
+    def get_similar_response(self, query):
+        query_embedding = embeddings.embed_query(query)
+        best_match = None
+        best_similarity = 0.85
+
+        cursor = self.collection.find({}, {'response': 1, 'embedding': 1})
+        
+        for doc in cursor:
+            temp_embedding = pickle.loads(doc['embedding'])
+            similarity = cosine_similarity(query_embedding, temp_embedding)
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_match = doc['response']
+                
+        return best_match if best_match else None
+
+    def get_recent_queries(self, limit=10):
+        return list(self.collection.find(
+            {},
+            {'query': 1, 'response': 1, 'metadata': 1, 'timestamp': 1, '_id': 0}
+        ).sort('timestamp', -1).limit(limit))
     
 DOCS_PATH = os.path.join(os.path.dirname(__file__), "docs")
 DB_PATH = "query_memory.db"
@@ -141,61 +194,10 @@ def split_and_embed_documents():
 
 vector_store = split_and_embed_documents()
 retriever = vector_store.as_retriever()
-
-def init_db():
-    connect = sqlite3.connect(DB_PATH)
-    cursor = connect.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS query_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            query TEXT NOT NULL,
-            response TEXT NOT NULL,
-            embedding BLOB NOT NULL,
-            metadata TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    connect.commit()
-    connect.close()
+db_manager = DatabaseManager()
     
-init_db()
-
-def store_query_response(query, response, metadata=None):
-    query_embedding = embeddings.embed_query(query)
-    connect = sqlite3.connect(DB_PATH)
-    cursor = connect.cursor()
-    cursor.execute('''
-        INSERT INTO query_memory (query, response, embedding, metadata) 
-        VALUES (?, ?, ?, ?)
-    ''', (query, response, pickle.dumps(query_embedding), 
-          json.dumps(metadata) if metadata else None))
-    connect.commit()
-    connect.close()
-    
-def get_similar_response(query):
-    query_embedding = embeddings.embed_query(query)
-    connect = sqlite3.connect(DB_PATH)
-    cursor = connect.cursor()
-    cursor.execute("SELECT query, response, embedding FROM query_memory")
-    rows = cursor.fetchall()
-    connect.close()
-    
-    best_match = None
-    best_similarity = 0.85
-    
-    for temp_query, temp_response, temp_embedding_blob in rows:
-        temp_embedding = pickle.loads(temp_embedding_blob)
-        similarity = cosine_similarity(query_embedding, temp_embedding)
-        print(similarity)
-        if similarity > best_similarity:
-            best_similarity = similarity
-            best_match = temp_response
-            
-    return best_match if best_match else None
-    
-    
-def get_openai_response(prompt, query):
-    store = get_similar_response(query)
+def get_openai_response(prompt, query, store_response=False):
+    store = db_manager.get_similar_response(query)
     if store:
         return f"\n{store}"
     try:
@@ -211,7 +213,8 @@ def get_openai_response(prompt, query):
         
         if response and response.choices:
             final = response.choices[0].message.content.strip()
-            store_query_response(query, final)
+            if store_response:
+                db_manager.store_query_response(query, final)
             return final
         return "Sorry, I couldn't generate a response. Please try again."
     except Exception as e:
@@ -244,6 +247,10 @@ def get_rag_response(query: str) -> str:
     Query: {query_metadata['clean_query']}
     """
     
-    raw_response = get_openai_response(prompt, query)
-    store_query_response(query, raw_response, query_metadata)
+    raw_response = get_openai_response(prompt, query, store_response=False)
+    db_manager.store_query_response(query, raw_response, {
+        **query_metadata,
+        'timestamp': datetime.now().isoformat(),
+        'model': 'gpt-3.5-turbo'
+    })
     return raw_response

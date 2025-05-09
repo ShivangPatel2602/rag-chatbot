@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from .chatbot import get_rag_response
 import speech_recognition as sr
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 def get_chatbot_response(user_input):
     user_input = user_input.lower()
@@ -17,6 +18,7 @@ def get_chatbot_response(user_input):
     
     return get_rag_response(user_input)
     
+@ensure_csrf_cookie
 def rag_chatbot_app_view(req):
     return render(req, "rag_chatbot_app/index.html")
 

@@ -13,11 +13,17 @@ function sendMessage() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
         },
+        credentials: 'include',
         body: JSON.stringify({'message': userMsg})
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         var formattedRes = marked.parse(data.response);
         chatBox.innerHTML += '<p><strong>Bot:</strong> ' + formattedRes + '</p>';

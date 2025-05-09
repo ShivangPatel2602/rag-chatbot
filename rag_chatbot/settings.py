@@ -49,6 +49,14 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware'
 ]
 
+CSRF_COOKIE_SECURE = True  # for HTTPS connections
+CSRF_COOKIE_HTTPONLY = False  # JavaScript needs to access the cookie
+CSRF_TRUSTED_ORIGINS = [
+    'https://rag-chatbot-7pd7.onrender.com/',  # Replace with your actual domain
+    'http://localhost:8000',
+    'http://127.0.0.1:8000'
+]
+
 ROOT_URLCONF = 'rag_chatbot.urls'
 
 TEMPLATES = [
