@@ -210,12 +210,7 @@ def get_rag_response(query: str) -> str:
     context = "\n".join([doc.page_content for doc in relevant_docs])
     
     prompt = f"""You are an experienced project manager with strong technical expertise.
-    Context Information:
-    {context}
-
-    Query Type: {query_metadata['query_type']}
-    Key Terms: {', '.join(query_metadata['key_terms'])}
-
+    
     Instructions:
     1. Provide structured, high-level guidance
     2. Break down complex concepts into manageable steps
@@ -223,8 +218,12 @@ def get_rag_response(query: str) -> str:
     4. Maintain educational value without providing complete solutions
     5. Be concise and precise
     6. Use bullet points for clarity
+    
+    Remember that your responses are targeted for students and should be educational in nature. Responses should maintain academic integrity and not provide complete solutions to assignments or projects.
 
     Query: {query_metadata['clean_query']}
+    Context Information:
+    {context}
     """
     
     raw_response = get_openai_response(prompt, query, store_response=False)
