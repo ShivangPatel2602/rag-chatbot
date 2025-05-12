@@ -7,7 +7,6 @@ from numpy import dot
 from numpy.linalg import norm
 from config import client, OPENAI_API_KEY, MONGODB_CONFIG, ENV
 from datetime import datetime
-import nltk
 from pymongo import MongoClient
 from bson.binary import Binary
 from nltk.tokenize import word_tokenize
@@ -20,9 +19,23 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_openai import OpenAIEmbeddings 
 from langchain_community.vectorstores import FAISS
 
+STOP_WORDS = {
+    'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're",
+    'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself',
+    'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself',
+    'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who',
+    'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are',
+    'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do',
+    'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or',
+    'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with',
+    'about', 'against', 'between', 'into', 'through', 'during', 'before',
+    'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on',
+    'off', 'over', 'under', 'again', 'further', 'then', 'once'
+}
+
 class QueryProcessor:
     def __init__(self):
-        self.stop_words = set(stopwords.words('english'))
+        self.stop_words = STOP_WORDS
         self.query_types = {
             'explanation': r'(explain|describe|what|how).+(mean|is|are|works?)',
             'comparison': r'(compare|difference|versus|vs)',
@@ -33,7 +46,7 @@ class QueryProcessor:
         
     def process_query(self, query: str) -> dict:
         clean_query = re.sub(r'[^\w\s]', '', query.lower())
-        tokens = word_tokenize(clean_query)
+        tokens = clean_query.split()
         key_terms = [w for w in tokens if w not in self.stop_words]
         
         return {
