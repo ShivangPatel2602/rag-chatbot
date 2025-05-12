@@ -12,3 +12,9 @@ services:
         generateValue: true
       - key: OPENAI_API_KEY
         value: ""
+      - key: MONGODB_URI
+        value: ""
+      - key: DB_NAME
+        value: ""
+      - key: ENV
+        value: "prod"

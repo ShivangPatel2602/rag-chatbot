@@ -5,12 +5,11 @@ import json
 import re
 from numpy import dot
 from numpy.linalg import norm
-from config import client, OPENAI_API_KEY
+from config import client, OPENAI_API_KEY, MONGODB_CONFIG, ENV
 from datetime import datetime
 import nltk
 from pymongo import MongoClient
 from bson.binary import Binary
-from .mongodb_config import MONGODB_CONFIG, ENV
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from textblob import TextBlob
