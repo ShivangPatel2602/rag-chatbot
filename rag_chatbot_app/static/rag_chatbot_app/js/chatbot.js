@@ -1,3 +1,5 @@
+let csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
 function sendMessage() {
     var userMsg = document.getElementById('user-input').value.trim();
     var chatBox = document.getElementById('chat-box');
@@ -9,13 +11,15 @@ function sendMessage() {
 
     document.getElementById('user-input').value = '';
 
+    csrfToken = getCookie('csrftoken') || csrfToken;
+
     fetch('/ask_chatbot/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': csrfToken,
         },
-        credentials: 'include',
+        credentials: 'same-origin',
         body: JSON.stringify({'message': userMsg})
     })
     .then(response => {
@@ -36,18 +40,12 @@ function sendMessage() {
 }
 
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift();
     }
-    return cookieValue;
+    return null;
 }
 
 let recognition;

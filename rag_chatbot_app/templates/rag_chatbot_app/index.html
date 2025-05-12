@@ -4,12 +4,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>RAG ChatBot</title>
     <link rel="stylesheet" href="{% static 'rag_chatbot_app/css/styles.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/recorderjs/0.1.0/recorder.min.js"></script>
     <script>
-      var csrfToken = "{{ csrf_token }}";
     </script>
   </head>
   <body>

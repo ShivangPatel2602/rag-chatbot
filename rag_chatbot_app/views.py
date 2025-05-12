@@ -18,10 +18,10 @@ def get_chatbot_response(user_input):
     
     return get_rag_response(user_input)
     
-@ensure_csrf_cookie
 def rag_chatbot_app_view(req):
     return render(req, "rag_chatbot_app/index.html")
 
+@ensure_csrf_cookie
 def ask_chatbot(request):
     if request.method == "POST":
         data = json.loads(request.body)
