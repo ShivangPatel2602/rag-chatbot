@@ -1,20 +1,27 @@
 services:
   - type: web
-    name: django-web
+    name: rag-chatbot
     env: python
-    plan: free
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "gunicorn rag_chatbot.wsgi:application --bind 0.0.0.0:$PORT"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn rag_chatbot.wsgi:application"
     envVars:
       - key: DEBUG
-        value: "False"
+        value: false
+      - key: ENV
+        value: prod
+      - key: DJANGO_SETTINGS_MODULE
+        value: rag_chatbot.settings
       - key: SECRET_KEY
         generateValue: true
       - key: OPENAI_API_KEY
-        value: ""
+        sync: false
       - key: MONGODB_URI
-        value: ""
+        sync: false
       - key: DB_NAME
-        value: ""
-      - key: ENV
-        value: "prod"
+        value: rag_chatbot
+
+databases:
+  - name: mongodb
+    databaseName: rag_chatbot
+    plan: free
+      

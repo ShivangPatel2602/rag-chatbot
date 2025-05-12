@@ -16,7 +16,7 @@ MONGODB_CONFIG = {
     },
     'prod': {
         'uri': env('MONGODB_URI'),
-        'db_name': env('DB_NAME'),
+        'db_name': env('DB_NAME', default='rag_chatbot'),
         'collection_name': 'query_memory'
     }
 }
